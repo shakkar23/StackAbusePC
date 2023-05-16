@@ -1,5 +1,4 @@
 #include <chrono>
-#include <hex.hpp>
 #include <iostream>
 #ifdef _WIN32
 extern "C"
@@ -13,30 +12,28 @@ extern "C"
 #endif
 #include <string>
 #include <thread>
+#include <stdint.h>
+#include <nlohmann/json.hpp>
 
-// enum buttons {
-// 	BUTTONA,
-// 	BUTTONB,
-// 	BUTTONX,
-// 	BUTTONY,
-// 	BUTTONR,
-// 	BUTTONL,
-// 	BUTTONZR,
-// 	BUTTONZL,
-// 	PLUS,
-// 	MINUS,
-// 	DLEFT,
-// 	DRIGHT,
-// 	DUP,
-// 	DDOWN,
-// 	HOME,   // please dont use this
-// 	CAPTURE // or this
-// };
+
+
+
+
+typedef uint64_t u64;
+typedef uint32_t u32;
+typedef uint16_t u16;
+typedef uint8_t u8;
+
+typedef int64_t s64;
+typedef int32_t s32;
+typedef int16_t s16;
+typedef int8_t s8;
+
 
 typedef struct
 {
     int size;
-    uint8_t *data;
+    uint8_t* data;
 } USBResponse;
 
 enum Switch
@@ -62,16 +59,16 @@ enum PcToSwitchCntrlr
 
 struct manybools
 {
-    bool boolean0  : 1;
-    bool boolean1  : 1;
-    bool boolean2  : 1;
-    bool boolean3  : 1;
-    bool boolean4  : 1;
-    bool boolean5  : 1;
-    bool boolean6  : 1;
-    bool boolean7  : 1;
-    bool boolean8  : 1;
-    bool boolean9  : 1;
+    bool boolean0 : 1;
+    bool boolean1 : 1;
+    bool boolean2 : 1;
+    bool boolean3 : 1;
+    bool boolean4 : 1;
+    bool boolean5 : 1;
+    bool boolean6 : 1;
+    bool boolean7 : 1;
+    bool boolean8 : 1;
+    bool boolean9 : 1;
     bool boolean10 : 1;
     bool boolean11 : 1;
     bool boolean12 : 1;
@@ -97,6 +94,14 @@ struct manybools
 
     void Reset()
     {
-        *this = {(u32) false};
+        *this = { (u32)false };
     }
 };
+
+
+void resetNX();
+int libusbCmdLog();
+
+
+void uninitlibusb();
+bool initlibusb();

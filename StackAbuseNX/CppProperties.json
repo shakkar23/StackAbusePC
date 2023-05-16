@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "inheritEnvironments": [
+        "msvc_x64"
+      ],
+      "name": "x64-Release",
+      "includePath": [
+        "${env.INCLUDE}",
+        "${workspaceRoot}\\**"
+      ],
+      "defines": [
+        "WIN32",
+        "UNICODE",
+        "_UNICODE"
+      ],
+      "intelliSenseMode": "gcc-x64",
+      "cppStandard": "gnu++17"
+    }
+  ]
+}
