@@ -1,0 +1,3 @@
+[submodule "StackAbuseNX/cc_switch_sysmod/libs/jsoncons"]
+	path = StackAbuseNX/cc_switch_sysmod/libs/jsoncons
+	url = https://github.com/danielaparker/jsoncons

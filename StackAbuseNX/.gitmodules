@@ -1,3 +1,0 @@
-[submodule "cc_switch_sysmod/libs/jsoncons"]
-	path = cc_switch_sysmod/libs/jsoncons
-	url = https://github.com/danielaparker/jsoncons/
