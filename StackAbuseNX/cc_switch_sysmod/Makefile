@@ -32,7 +32,7 @@ LIBDIRS	:= $(PORTLIBS) $(LIBNX) $(shell echo $(CURDIR)/libs/*)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 
-export OUTPUT	:=	$(OUTPUT_DIR)/$(TARGET)
+export OUTPUT	:=	$(OUTPUT_DIR)/exefs
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
@@ -106,6 +106,7 @@ $(OUTPUT).nsp	:	$(OUTPUT).nso
 else
 $(OUTPUT).nsp	:	$(OUTPUT).nso $(OUTPUT).npdm
 endif
+
 
 $(OUTPUT).nso	:	$(OUTPUT).elf
 

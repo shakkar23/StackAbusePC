@@ -105,7 +105,10 @@
 		"locale": "cpp",
 		"numbers": "cpp",
 		"stack": "cpp",
-		"cstdbool": "cpp"
+		"cstdbool": "cpp",
+		"charconv": "cpp",
+		"format": "cpp",
+		"scoped_allocator": "cpp"
 	},
 	"C_Cpp.errorSquiggles": "Enabled"
 }

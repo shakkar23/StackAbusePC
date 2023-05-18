@@ -56,6 +56,8 @@ void initController()
 		fatalThrow(rc);
 	bControllerIsInitialised = true;
 }
+void press(HidNpadButton btn);
+void release(HidNpadButton btn);
 
 void click(HidNpadButton btn)
 {

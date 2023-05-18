@@ -2,7 +2,7 @@
 
 typedef struct
 {
-	u64 size;
+	u32 size;
 	void *data;
 } USBResponse;
 

@@ -15,75 +15,9 @@
 
 
 
-Result PptMemory::PptContext::hookppt2(u64 pid) {
-    const std::array<u8, 32> TARGET_PROCESS_BUILD_ID {
-		0xf8, 0x3f, 0xbd, 0x3e, 0x1e, 0x60, 0x7d, 0x15, 
-        0x3e, 0x89, 0x13, 0x68, 0x92, 0x7c, 0x6c, 0xde, 
-        0x42, 0x15, 0x4a, 0xd2, 0x00, 0x00, 0x00, 0x00, 
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	};
-    
-    Result rc;
-    LoaderModuleInfo process_modules[2];
-    s32 module_count;
-
-    rc = ldrDmntGetProcessModuleInfo(
-        pid,
-        process_modules,
-        std::size(process_modules),
-        &module_count
-    );
-    
-    if (R_FAILED(rc)) {
-        return rc;
-    }
-    PptContext::pid = pid;
-    PptContext::process_info = process_modules[module_count - 1];
-    auto is_ppt2 = std::equal(std::begin(PptContext::process_info.build_id),std::end(PptContext::process_info.build_id),TARGET_PROCESS_BUILD_ID.begin(),TARGET_PROCESS_BUILD_ID.end());
-    if (!is_ppt2) {
-
-        return 1;
-    }
-	PptOffsets::ppt2();
-	return rc;
-}
-
-Result PptMemory::PptContext::hookppt1(u64 pid) {
-	const std::array<u8, 32> TARGET_PROCESS_BUILD_ID {
-        0x71, 0x44, 0x66, 0x6e, 0x1c, 0x99, 0x43, 0x9d,
-        0xd1, 0xed, 0x0f, 0x60, 0x59, 0xda, 0xf8, 0xd5,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        };
-
-	Result rc;
-	LoaderModuleInfo process_modules[2];
-	s32 module_count;
-
-	rc = ldrDmntGetProcessModuleInfo(pid, process_modules, std::size(process_modules), &module_count);
-
-	if(R_FAILED(rc)) {
-		return rc;
-	}
-	
-	PptContext::pid                = pid;
-	PptContext::process_info       = process_modules[module_count - 1];
-	auto is_ppt = std::equal(std::begin(PptContext::process_info.build_id), std::end(PptContext::process_info.build_id), TARGET_PROCESS_BUILD_ID.begin(), TARGET_PROCESS_BUILD_ID.end());
-	if(!is_ppt) {
-		return 1;
-	}
-
-	PptOffsets::ppt1();
-	return rc;
-}
-
-Result PptMemory::PptContext::debug() {
-    PptMemoryLock::process_info = process_info;
-    return svcDebugActiveProcess(&PptMemoryLock::handle, PptContext::pid);
-}
 
 
-Result PptMemory::PptMemoryLock::readPointerChain(const std::vector<u64>& chain, void* buffer, u64 size) {
+Result PptMemory::PptMemoryLock::readPointerChain(Handle handle,const std::vector<u64>& chain, void* buffer, u64 size) {
 	if (chain.size() == 0) {
 		return 1;
 	}
@@ -98,9 +32,9 @@ Result PptMemory::PptMemoryLock::readPointerChain(const std::vector<u64>& chain,
 	return svcReadDebugProcessMemory(buffer, handle, ptr, size);
 }
 
-Result PptMemory::PptMemoryLock::readBoard(Player player, std::array<std::array<bool, 10>, 40>& board) {
+Result PptMemory::PptMemoryLock::readBoard(Handle handle, u64 mainAddr, Player player, std::array<std::array<bool, 10>, 40>& board) {
     const std::vector<u64> chain {
-        process_info.base_address + PptOffsets::BASEPOINTER,
+        mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::TETRIS_PLAYER_MAIN_STRUCT,
         PptOffsets::BOARDPTR,
@@ -111,7 +45,7 @@ Result PptMemory::PptMemoryLock::readBoard(Player player, std::array<std::array<
     Result rc;
 
     std::array<u64, 10> columns;
-    rc = readPointerChain(chain, columns.data(), sizeof(columns));
+    rc = readPointerChain(handle, chain, columns.data(), sizeof(columns));
     if (R_FAILED(rc)) {
         return rc;
     }
@@ -129,9 +63,9 @@ Result PptMemory::PptMemoryLock::readBoard(Player player, std::array<std::array<
     return rc;
 }
 
-Result PptMemory::PptMemoryLock::readQueue(Player player, std::vector<Piece>& queue) {
+Result PptMemory::PptMemoryLock::readQueue(Handle handle, u64 mainAddr,Player player, std::vector<Piece>& queue) {
     const std::vector<u64> chain {
-        process_info.base_address + PptOffsets::BASEPOINTER,
+        mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::QUEUE_STRUCT_TETRIS,
         PptOffsets::QUEUE
@@ -140,7 +74,7 @@ Result PptMemory::PptMemoryLock::readQueue(Player player, std::vector<Piece>& qu
     Result rc;
 
     std::array<std::array<u8, 8>, 5> rawQueue;
-    rc = readPointerChain(chain, rawQueue.data(), sizeof(rawQueue));
+    rc = readPointerChain(handle, chain, rawQueue.data(), sizeof(rawQueue));
     if (R_FAILED(rc)) {
         return rc;
     }
@@ -155,9 +89,9 @@ Result PptMemory::PptMemoryLock::readQueue(Player player, std::vector<Piece>& qu
     return rc;
 }
 
-Result PptMemory::PptMemoryLock::readPieceState(Player player, PieceState& pieceState) {
+Result PptMemory::PptMemoryLock::readPieceState(Handle handle, u64 mainAddr, Player player, PieceState& pieceState) {
     const std::vector<u64> chain {
-        process_info.base_address + PptOffsets::BASEPOINTER,
+        mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::TETRIS_PLAYER_MAIN_STRUCT,
         PptOffsets::PIECEPTR,
@@ -174,7 +108,7 @@ Result PptMemory::PptMemoryLock::readPieceState(Player player, PieceState& piece
     } __attribute__((packed));
     RawPieceState rawPieceState;
 
-    Result rc = readPointerChain(chain, &rawPieceState, sizeof(decltype(rawPieceState)));
+    Result rc = readPointerChain(handle,chain, &rawPieceState, sizeof(decltype(rawPieceState)));
     if (R_SUCCEEDED(rc)) {
         pieceState = {
             .piece = rawPieceState.piece,
@@ -189,24 +123,24 @@ Result PptMemory::PptMemoryLock::readPieceState(Player player, PieceState& piece
     return rc;
 }
 
-Result PptMemory::PptMemoryLock::readPieceInactive(Player player, bool& pieceInactive) {
+Result PptMemory::PptMemoryLock::readPieceInactive(Handle handle, u64 mainAddr,Player player, bool& pieceInactive) {
     const std::vector<u64> chain {
-        process_info.base_address + PptOffsets::BASEPOINTER,
+        mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::TETRIS_PLAYER_MAIN_STRUCT,
         PptOffsets::PIECEINACTIVE
     };
 
-    return readPointerChain(chain, &pieceInactive, sizeof(decltype(pieceInactive)));
+    return readPointerChain(handle, chain, &pieceInactive, sizeof(decltype(pieceInactive)));
 }
 
-Result PptMemory::PptMemoryLock::readPieceHeld(Player player, bool& pieceHeld) {
+Result PptMemory::PptMemoryLock::readPieceHeld(Handle handle, u64 mainAddr,Player player, bool& pieceHeld) {
     const std::vector<u64> chain {
-        process_info.base_address + PptOffsets::BASEPOINTER,
+        mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::TETRIS_PLAYER_MAIN_STRUCT,
         PptOffsets::PIECEHELD
     };
 
-    return readPointerChain(chain, &pieceHeld, sizeof(decltype(pieceHeld)));
+    return readPointerChain(handle,chain, &pieceHeld, sizeof(decltype(pieceHeld)));
 }

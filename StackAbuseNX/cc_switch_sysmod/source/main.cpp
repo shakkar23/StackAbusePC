@@ -1,4 +1,4 @@
-#include "app.hpp"
+#include "Shak2/Shak2.hpp"
 #include "usb_cc/usb_cc.hpp"
 #include <math.h>
 #include <stdint.h>
@@ -105,6 +105,6 @@ void __appExit(void) {
 
 //#define PCTALK
 int main() {
-	PcTalk();
+	PcTalk2();
 	return 0;
 }
