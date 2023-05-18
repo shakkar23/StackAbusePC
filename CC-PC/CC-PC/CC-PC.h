@@ -6,6 +6,10 @@
 #include <iostream>
 #include "imgui.h"
 #include <stdio.h>
+#include <array>
+#include <vector>
+#include <string>
+
 // TODO: Reference additional headers your program requires here.
 
 #include "../imgui/imgui_impl_glfw.hpp"

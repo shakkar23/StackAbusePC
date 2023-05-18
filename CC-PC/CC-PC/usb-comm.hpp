@@ -105,3 +105,6 @@ int libusbCmdLog();
 
 void uninitlibusb();
 bool initlibusb();
+
+void sendJson(const nlohmann::json& json);
+const nlohmann::json receiveJson();

@@ -10,16 +10,58 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+
+enum class Piece : u32 { S = 0, Z = 1, J = 2, L = 3, T = 4, O = 5, I = 6 };
+char PieceToChar(Piece piece) {
+    switch (piece)
+    {
+		case Piece::S: return 'S';
+		case Piece::Z: return 'Z';
+		case Piece::J: return 'J';
+		case Piece::L: return 'L';
+		case Piece::T: return 'T';
+		case Piece::O: return 'O';
+		case Piece::I: return 'I';
+	}
+    return 'N';
+}
+struct PieceState {
+    Piece piece;
+    u32 x;
+    u32 y;
+    u32 distanceToGround;
+    u32 rotation;
+    u8 locked;
+    u8 isPuyomino;
+};
+
+class GameState {
+public:
+    std::array<std::array<bool, 10>, 40> board{};
+    std::vector<Piece> queue;
+    PieceState pieceState;
+    bool pieceHeld;
+    bool pieceInactive;
+}game_state;
+
 // Main code
 int main(int, char**)
 {
-
-    if (!initlibusb()) {
-        // didnt init for some reason,
-        // could have been that the switch was not setup correctly, or plugged at all
-        return 1;
+    while (true) {
+        if (!initlibusb()) {
+            
+            // didnt init for some reason,
+            // could have been that the switch was not setup correctly, or plugged at 
+            // wait 5 seconds and try to connect
+            std::cout << "trying again in 5 seconds!" << std::endl << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        }
+        else
+        {
+			break;
+		}
     }
-
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return 1;
@@ -62,7 +104,7 @@ int main(int, char**)
 
 
         {
-            ImGui::Begin("Tetris Render");
+            ImGui::Begin("Tetris Render WIP");
 
             ImVec2 winPos = ImGui::GetWindowPos();
             ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -73,20 +115,72 @@ int main(int, char**)
 
 
         {
-            static int counter = 0;
 
-            ImGui::Begin("dsa");
+            ImGui::Begin("main thingy");
 
+
+
+            if (ImGui::Button("pause")) {
+                nlohmann::json payload;
+                payload["command"] = "pause";
+                sendJson(payload);
+            }
+            if (ImGui::Button("play")) {
+                nlohmann::json payload;
+                payload["command"] = "play";
+                sendJson(payload);
+            }
+            if (ImGui::Button("give state")) {
+                nlohmann::json payload;
+                payload["command"] = "give state";
+                sendJson(payload);
+                payload = receiveJson();
+
+                game_state.board = payload["Board"].get<decltype(game_state.board)>();
+                game_state.queue = payload["Queue"].get<decltype(game_state.queue)>();
+
+                auto &pieceState = game_state.pieceState;
+                pieceState.x = payload["Piece"]["x"].get<decltype(pieceState.x)>();
+                pieceState.y = payload["Piece"]["y"].get<decltype(pieceState.y)>();
+                pieceState.rotation = payload["Piece"]["rotation"].get<decltype(pieceState.rotation)>();
+                pieceState.distanceToGround = payload["Piece"]["distanceToGround"].get<decltype(pieceState.distanceToGround)>();
+                pieceState.locked = payload["Piece"]["locked"].get<decltype(pieceState.locked)>();
+                pieceState.isPuyomino = payload["Piece"]["isPuyomino"].get<decltype(pieceState.isPuyomino)>();
+                pieceState.piece = payload["Piece"]["piece"].get<decltype(pieceState.piece)>();
+
+
+
+            }
+
+
+
+            ImGui::NewLine();
             ImGui::BulletText("Pointers:\n");
             {
                 ImGui::Indent();
 
-                ImGui::BulletText("PieceInactive: ");
+                ImGui::BulletText("PieceInactive: %d", game_state.pieceInactive);
                 ImGui::BulletText("PieceState: ");
-                ImGui::BulletText("BoardPtr: ");
-                ImGui::BulletText("PiecePtr: ");
-                ImGui::BulletText("PieceHeld: ");
-                ImGui::BulletText("Queue: ");
+
+                    ImGui::Indent();
+
+                        ImGui::BulletText("type: %c", PieceToChar(game_state.pieceState.piece));
+                        ImGui::BulletText("x: %d", game_state.pieceState.x);
+                        ImGui::BulletText("y: %d", game_state.pieceState.y);
+                        ImGui::BulletText("distanceToGround: %d", game_state.pieceState.distanceToGround);
+                        ImGui::BulletText("locked: %d", game_state.pieceState.locked);
+
+                    ImGui::Unindent();
+
+                ImGui::BulletText("PieceHeld: %d", (game_state.pieceHeld));
+				
+                    ImGui::Indent();
+                        ImGui::BulletText("Queue: ");
+                        for (int i = 0; i < game_state.queue.size(); i++) {
+				        	ImGui::BulletText("%c", PieceToChar(game_state.queue[i]));
+				        }
+                    ImGui::Unindent();
+
 
                 ImGui::Unindent();
             }

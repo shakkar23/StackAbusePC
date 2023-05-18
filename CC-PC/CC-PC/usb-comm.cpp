@@ -63,12 +63,15 @@ Switch getOutPort() {
 		return switchsend2;
 	}
 }
+libusb_device_handle* open_device_with_vid_pid(
+	libusb_context* ctx, uint16_t vendor_id, uint16_t product_id);
 
 bool initlibusb() {
 	if (libusbinit) {
 		return true;
 	}
 	using namespace std;
+	//libusbCmdLog();
 
 	// pointer to pointer of device, used to retrieve a list of devices
 	//libusb_device_handle *dev_handle; // a device handle
@@ -76,16 +79,16 @@ bool initlibusb() {
 	// for return values
 	// holding number of devices in list
 	r = libusb_init(&ctx); // initialize the library for the session we just declared
-	if (r < 0) {
+	if (r != 0) {
 		cout << "Init Error " << r << endl; // there was an error
 		return false;
 	}
-	r = libusb_set_option(ctx, LIBUSB_OPTION_USE_USBDK); // set verbosity level to 3, as suggested in the documentation
-	// if (r < 0)
-	// {
-	// 	cout << "set Error " << r << endl << libusb_error_name(r); // there was an error
-	// 	return;
-	// }
+	//r = libusb_set_option(ctx, LIBUSB_OPTION_USE_USBDK); // set verbosity level to 3, as suggested in the documentation
+	if (r != 0)
+	{
+		cout << "set Error " << r << endl << libusb_error_name(r); // there was an error
+		return false;
+	}
 	cnt = libusb_get_device_list(ctx, &devs); // get the list of devices
 	if (cnt < 0) {
 		std::cout << "Get Device Error" << std::endl; // there was an error
@@ -93,9 +96,9 @@ bool initlibusb() {
 	}
 	std::cout << cnt << " Devices in list." << std::endl;
 
-	dev_handle = libusb_open_device_with_vid_pid(ctx, 0x057e, 0x3000); // these are vendorID and productID I found for my usb device
+	// these are vendorID and productID I found for the switch
+	dev_handle = open_device_with_vid_pid(ctx, 0x057e /*1406*/, 0x3000/*12288*/);
 	if (dev_handle == NULL) {
-		cout << "Cannot open device" << endl;
 		return false;
 	}
 	else {
@@ -110,7 +113,7 @@ bool initlibusb() {
 			cout << "Kernel Driver Detached!" << endl;
 	}
 
-	r = libusb_claim_interface(dev_handle, 1); // claim interface 0 (the first) of device (mine had jsut 1)
+	r = libusb_claim_interface(dev_handle, 0); // claim interface 0 (the first) of device (mine had jsut 1)
 	if (r < 0) {
 		cout << "Cannot Claim Interface" << endl;
 		return false;
@@ -144,52 +147,50 @@ void uninitlibusb() {
 	return;
 }
 
+std::string getbytes();
+void sendbytes(const USBResponse&x);
+
+
 void sendJson(const nlohmann::json &json) {
-	std::string stringified_json = json;
-	USBResponse package = {.data = (u8*)stringified_json.c_str(), .size = stringified_json.size()};
+	std::string stringified_json = json.dump();
+	USBResponse package = { .size = (int)stringified_json.size(), .data = (u8*)stringified_json.c_str()};
 
 	sendbytes(package);
 }
 
 const nlohmann::json receiveJson() {
-
-	USBResponse package = { .data = nullptr, .size = 0 };
-
-	getbytes(package);
-
-	std::string stringified_json = std::string((char*)package.data, package.size);
-
-	return nlohmann::json::parse(stringified_json);
+	std::string bytes = getbytes();
+	std::cout << bytes;
+	return nlohmann::json::parse(bytes);
 }
 
 
-void getbytes(USBResponse x) {
+std::string getbytes() {
 	initlibusb();
-	int actual;
-	int r;
-	x.size = 0;
-	std::cout << "startGetBytes" << std::endl;
-	r = libusb_bulk_transfer(dev_handle, getInPort(), (unsigned char*)&x.size, 4, &actual, 10000); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
-	// std::cout << "actual 1: " << actual << std::endl << std::endl;
-	std::cout << "size:" << x.size << std::endl;
-	if (x.size = 0) {
+	int actual{};
+	int r{};
+	int size = 0;
+	//std::cout << "startGetBytes" << std::endl;
+	r = libusb_bulk_transfer(dev_handle, getInPort(), (unsigned char*)&size, 4, &actual, 0); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
+	std::cout << "actual: " << actual << std::endl << std::endl;
+	//std::cout << "size:" << size << std::endl;
+	if (size == 0) {
 		uninitlibusb();
-		return;
+		return {};
 	}
 	if (r != 0) // we wrote the 4 bytes successfully// yeah when it was == lol
-		std::cout << "read Error1:" << x.size << std::endl;
-	x.data[x.size] = { 0 };
-	r = libusb_bulk_transfer(dev_handle, getInPort(), (unsigned char*)x.data, x.size, &actual, 10000); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
-	// std::cout << "actual 2: " << actual << std::endl;
-	if (r != 0) // we wrote the 4 bytes successfully// yeah when it was == lol
-		std::cout << "read Error2:" << std::endl
-		<< "error name thing:" << libusb_error_name(r) << std::endl;
-	//std::cout << "after: 0x" << std::to_string(linebuf[0]) << std::to_string(linebuf[2]) << std::to_string(linebuf[3]) << std::to_string(linebuf[4]) << std::endl;
-	//r = libusb_bulk_transfer(dev_handle, readNX(), &ee, x.size, (int *)&linebuf[0], 100); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
-	//if (r != 0)																						// we wrote the 4 bytes successfully// yeah when it was == lol
-	//	std::cout << "read Error2:" << linebuf << std::endl;
-	//std::cout << "afterest: 0x" << std::to_string(linebuf[0]) << std::to_string(linebuf[2]) << std::to_string(linebuf[3]) << std::to_string(linebuf[4]) << std::endl;
-	std::cout << "endGetBytes" << std::endl;
+		std::cout << "read Error1:" << size << std::endl;
+	std::string buffer(size + 1, '\0');
+	int iter = 0;
+	while(size > iter){
+		r = libusb_bulk_transfer(dev_handle, getInPort(), (unsigned char*)(buffer.data() + iter), size, &actual, 0); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
+		iter += actual;
+		if (r != 0) // we wrote the 4 bytes successfully
+			std::cout << "read Error2:" << std::endl
+			<< "error name thing:" << libusb_error_name(r) << std::endl;
+	}
+
+	return buffer;
 }
 
 //bad
@@ -207,21 +208,21 @@ void dobytes(USBResponse& x) {
 		std::cout << "do Error2" << std::endl;
 }
 
-void sendbytes(USBResponse x) {
+void sendbytes(const USBResponse &x) {
 	initlibusb();
-	int actual;
-	int r;
+	int actual{};
+	int r{};
 
-	unsigned char ee = 'e';
 	std::cout << "startSendBytes" << std::endl;
 	r = libusb_bulk_transfer(dev_handle, getOutPort(), (unsigned char*)&x.size, 4, &actual, 0); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
 	if (r != 0)																				 // we wrote the 4 bytes successfully// yeah when it was == lol
 		std::cout << "write Error1:" << libusb_error_name(r) << std::endl;
 
-	r = libusb_bulk_transfer(dev_handle, getOutPort(), (unsigned char*)&x.data, x.size, &actual, 0); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
+	r = libusb_bulk_transfer(dev_handle, getOutPort(), (unsigned char*)x.data, x.size, &actual, 0); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
 	if (r != 0)																					  // we wrote the 4 bytes successfully// yeah when it was == lol
-		std::cout << "write Error2" << std::endl;
-	std::cout << "endSendBytes" << std::endl;
+		std::cout << "write Error2" << std::endl
+		<< "error name:" << libusb_error_name(r) << std::endl;
+
 }
 
 void sendStr(std::string input) {
@@ -229,7 +230,6 @@ void sendStr(std::string input) {
 	int actual;
 	int r;
 
-	unsigned char ee = 'e';
 	r = libusb_bulk_transfer(dev_handle, getOutPort(), (unsigned char*)(input.size() + 2), 4, &actual, 0); // my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
 	if (r != 0)																							// we wrote the 4 bytes successfully// yeah when it was == lol
 		std::cout << "write Error1:" << libusb_error_name(r) << std::endl;
@@ -511,4 +511,44 @@ void resetNX() {
 	libusb_bulk_transfer(dev_handle, (getOutPort()), (unsigned char*)&command, sizeof(uint32_t), &BytesWritten, 0); // write data
 
 	return;
+}
+
+
+
+libusb_device_handle* open_device_with_vid_pid(
+	libusb_context* ctx, uint16_t vendor_id, uint16_t product_id)
+{
+	struct libusb_device** devs;
+	struct libusb_device* found = NULL;
+	struct libusb_device* dev;
+	struct libusb_device_handle* handle = NULL;
+	size_t i = 0;
+	int r;
+
+	if (libusb_get_device_list(ctx, &devs) < 0)
+		return NULL;
+
+	while ((dev = devs[i++]) != NULL) {
+		struct libusb_device_descriptor desc;
+		r = libusb_get_device_descriptor(dev, &desc);
+		if (r < 0)
+			goto out;
+		if (desc.idVendor == vendor_id && desc.idProduct == product_id) {
+			found = dev;
+			break;
+		}
+	}
+
+	if (found) {
+		r = libusb_open(found, &handle);
+		if (r < 0)
+		{
+			handle = NULL;
+			std::cout << "Cannot open device because" << libusb_error_name(r) << std::endl;
+		}
+	}
+
+out:
+	libusb_free_device_list(devs, 1);
+	return handle;
 }
