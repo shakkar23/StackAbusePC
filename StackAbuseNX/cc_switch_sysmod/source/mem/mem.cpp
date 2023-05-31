@@ -1,11 +1,12 @@
 #include "mem.hpp"
-
+#include <filesystem>
+#include <fstream>
 
 	u64 PptMemory::PptOffsets::DISTANCE_TO_NEXT_PLAYER = 0;
 	u64 PptMemory::PptOffsets::BASEPOINTER = 0;
 	u64 PptMemory::PptOffsets::PLAYER_1 = 0;
 	u64 PptMemory::PptOffsets::TETRIS_PLAYER_MAIN_STRUCT = 0;
-	u64 PptMemory::PptOffsets::PIECEINACTIVE = 0;
+	//u64 PptMemory::PptOffsets::PIECEINACTIVE = 0;
 	u64 PptMemory::PptOffsets::PIECESTATE = 0; // 1, before piece spawns after garbage added, 2 movable, anything else is no
     u64 PptMemory::PptOffsets::BOARDPTR = 0;
 	u64 PptMemory::PptOffsets::PIECEPTR = 0;
@@ -69,18 +70,20 @@ Result PptMemory::PptMemoryLock::readQueue(Handle handle, u64 mainAddr,Player pl
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::QUEUE_STRUCT_TETRIS,
         PptOffsets::QUEUE
+        
+			// [[[main+BASEPOINTER]+PLAYER_1]+QUEUE_STRUCT_TETRIS]+QUEUE
     };
 
     Result rc;
 
-    std::array<std::array<u8, 8>, 5> rawQueue;
+    std::array<u32, 5> rawQueue;
     rc = readPointerChain(handle, chain, rawQueue.data(), sizeof(rawQueue));
     if (R_FAILED(rc)) {
         return rc;
     }
     queue.clear();
     for (auto element: rawQueue) {
-        auto piece = element.at(0);
+        auto piece = element;
         if (piece >= 7) {
             return 1;
         }
@@ -128,19 +131,26 @@ Result PptMemory::PptMemoryLock::readPieceInactive(Handle handle, u64 mainAddr,P
         mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::TETRIS_PLAYER_MAIN_STRUCT,
-        PptOffsets::PIECEINACTIVE
+        PptOffsets::PIECESTATE
     };
-
-    return readPointerChain(handle, chain, &pieceInactive, sizeof(decltype(pieceInactive)));
+	//[[[main+BASEPOINTER]+PLAYER_1]+TETRIS_PLAYER_MAIN_STRUCT]+PIECESTATE
+    u8 temp = 0;
+    auto r = readPointerChain(handle, chain, (void *)&temp, sizeof(decltype(pieceInactive)));
+    pieceInactive = !!temp;
+    return r;
 }
 
 Result PptMemory::PptMemoryLock::readPieceHeld(Handle handle, u64 mainAddr,Player player, bool& pieceHeld) {
-    const std::vector<u64> chain {
+        const std::vector<u64> chain {
         mainAddr + PptOffsets::BASEPOINTER,
         PptOffsets::PLAYER_1 + (u64)player * PptOffsets::DISTANCE_TO_NEXT_PLAYER,
         PptOffsets::TETRIS_PLAYER_MAIN_STRUCT,
         PptOffsets::PIECEHELD
     };
+    //[[[main+BASEPOINTER]+PLAYER_1]+TETRIS_PLAYER_MAIN_STRUCT]+PIECEHELD
+    u8 temp = 0;
+    auto r= readPointerChain(handle,chain, &pieceHeld, sizeof(decltype(pieceHeld)));
 
-    return readPointerChain(handle,chain, &pieceHeld, sizeof(decltype(pieceHeld)));
+    pieceHeld = !!temp;
+    return r;
 }

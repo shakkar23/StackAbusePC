@@ -1,5 +1,4 @@
 #include "Shak2/Shak2.hpp"
-#include "usb_cc/usb_cc.hpp"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>

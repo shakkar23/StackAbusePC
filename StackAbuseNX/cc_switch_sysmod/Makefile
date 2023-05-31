@@ -8,7 +8,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 OUTPUT_DIR  :=  $(CURDIR)/dist
 TARGET		:=	cc_switch_sysmod
 BUILD		:=	build
-SOURCES		:=	source source/input source/mem source/usb_cc source/Shak source/Shak2
+SOURCES		:=	source source/input source/mem source/Shak source/Shak2
 DATA		:=	data
 INCLUDES	:=	include 
 EXEFS_SRC	:=	exefs_src

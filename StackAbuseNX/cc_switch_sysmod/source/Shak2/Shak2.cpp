@@ -48,10 +48,43 @@ bool parseJson(nlohmann::json& command) {
 
 	if(str == "exit")
 		diagAbortWithResult(0);
+
+	else if(str == "get memory"){
+		// debug game if not already debugged
+		if(!handle.has_value()) {
+			handle = std::make_optional<Handle>();
+			auto r      = svcDebugActiveProcess(&handle.value(), PPTPID);
+			if(R_FAILED(r)) {
+				fatalThrow(r);
+			}
+		}
+
+		// get data
+		std::vector<u64> chain = command["chain"].get<std::vector<u64>>();
+		u64 size  = command["size"].get<u64>();
+		chain[0] += mainAddr;
+		std::vector<u8> buffer(size);
+
+		Result rc = PptMemory::PptMemoryLock::readPointerChain(handle.value(), chain, buffer.data(), size);
+		
+		
+		nlohmann::json jsonPayload;
+		if(R_FAILED(rc)) {
+			jsonPayload["error"] = rc;
+			buffer = {0};
+		}
+
+		nlohmann::json data(buffer);
+
+		jsonPayload["data"] = data;
+
+		sendJson(jsonPayload);
+	
+	}
 	else if(str == "give state") {
 		file << "got to line " << __LINE__ << std::endl;
 		Result r;
-		// pause ppt before and after this scope
+		// pause ppt before grabbing state
 		if(!handle.has_value()) {
 			handle = std::make_optional<Handle>();
 			r      = svcDebugActiveProcess(&handle.value(), PPTPID);
@@ -80,7 +113,7 @@ bool parseJson(nlohmann::json& command) {
 			jsonPayload["PieceInactive"] = pieceInactive;
 		}
 
-		bool pieceHeld;
+		bool pieceHeld = true;
 		r = PptMemory::PptMemoryLock::readPieceHeld(handle.value(), mainAddr, PptMemory::Player::One, pieceHeld);
 		if(R_SUCCEEDED(r)) {
 			jsonPayload["PieceHeld"] = pieceHeld;
@@ -111,22 +144,23 @@ bool parseJson(nlohmann::json& command) {
 		usbCommsWrite(&payload.size, sizeof(decltype(payload.size)));
 		usbCommsWrite(payload.data, payload.size);
 
-		// unpause ppt
-		if(handle.has_value()) {
-			r = svcCloseHandle(*handle);
-			if(R_FAILED(r)) {
-				fatalThrow(r);
-			}
-			handle.reset();
-		}
+		// // unpause ppt
+		// if(handle.has_value()) {
+		// 	r = svcCloseHandle(*handle);
+		// 	if(R_FAILED(r)) {
+		// 		fatalThrow(r);
+		// 	}
+		// 	handle.reset();
+		// }
 
 	} else if(str == "frame advance") {
+		eventWait(&vsync_event, UINT64_MAX);
 		if(handle.has_value()) {
 			svcCloseHandle(*handle);
 			handle.reset();
 		}
+		
 		handle = std::make_optional<Handle>();
-		svcBreakDebugProcess(handle.value());
 		eventWait(&vsync_event, UINT64_MAX);
 		svcDebugActiveProcess(&handle.value(), PPTPID);
 
@@ -180,7 +214,7 @@ int PcTalk2() {
 		} else
 			break;
 
-		// sleep 10 seconds
+		// sleep 1 seconds
 		svcSleepThread(1'000'000'000);
 	}
 	// hooked into process!

@@ -38,7 +38,7 @@ namespace PptMemory {
 		static u64 BASEPOINTER;
 		static u64 PLAYER_1;
 		static u64 TETRIS_PLAYER_MAIN_STRUCT;
-		static u64 PIECEINACTIVE;
+		//static u64 PIECEINACTIVE;
 		static u64 BOARDPTR;
 		static u64 PIECEPTR;
 		static u64 PIECEHELD;
@@ -53,7 +53,7 @@ namespace PptMemory {
 			BASEPOINTER               = 0x1626F60; // Puyo::ManagerBase::instance_
 			PLAYER_1                  = 0x208;
 			TETRIS_PLAYER_MAIN_STRUCT = 0x88;
-			PIECEINACTIVE             = 0x12C;
+			//PIECEINACTIVE             = 0x12C;
 			BOARDPTR                  = 0x1CB8;
 			PIECEPTR                  = 0x1CC0;
 			PIECEHELD                 = 0x1AF8;
@@ -69,7 +69,7 @@ namespace PptMemory {
 			BASEPOINTER               = 0x1629318; // Puyo::ManagerBase::instance_
 			PLAYER_1                  = 0x208;
 			TETRIS_PLAYER_MAIN_STRUCT = 0x88;
-			PIECEINACTIVE             = 0x12C;
+			//PIECEINACTIVE             = 0x12C;
 			BOARDPTR                  = 0x1CB8;
 			PIECEPTR                  = 0x1CC0;
 			PIECEHELD                 = 0x1AF8;
@@ -79,18 +79,33 @@ namespace PptMemory {
 
 		static void ppt1() {
 			DISTANCE_TO_NEXT_PLAYER   = 8;
-			BASEPOINTER               = 0x6E9900; // Puyo::ManagerBase::instance_
-			PLAYER_1                  = 0x350;
-			TETRIS_PLAYER_MAIN_STRUCT = 0x80;
-			PIECEINACTIVE             = 0xDD; // less sus than before
-			//[[[main+6E9900]+350]+80]+CC is piece state (2 is movable, 6 is not, everything else is in the middle of code)
-			PIECESTATE          = 0xCC;
-			BOARDPTR            = 0x398;
-			PIECEPTR            = 0x3A0;
-			PIECEHELD           = 0x2F4;
-			QUEUE_STRUCT_TETRIS = 0x90;
-			QUEUE               = 0x150;
-		}
+				BASEPOINTER               = 0x6E9900; // Puyo::ManagerBase::instance_
+					PLAYER_1                  = 0x350;
+						TETRIS_PLAYER_MAIN_STRUCT = 0x80;
+						//PIECEINACTIVE             = 0xDD; // less sus than before
+						//[[[main+6E9900]+350]+80]+CC is piece state (2 is movable, 4 is just harddropped, 6 is not, everything else is in the middle of code)
+						// decimal version: 
+						//[[[main+7248128]+848]+128]+204
+						// variable version:
+						//[[[main+BASEPOINTER]+PLAYER_1]+TETRIS_PLAYER_MAIN_STRUCT]+PIECESTATE
+						PIECESTATE          = 0xCC;
+						BOARDPTR            = 0x398;
+						PIECEPTR            = 0x3A0;
+						// piece held:
+						//[[[main+6E9900]+350]+80]+2F4
+						//decimal version:
+						//[[[main+7248128]+848]+128]+756
+						PIECEHELD           = 0x2F4;
+					QUEUE_STRUCT_TETRIS = 0x90;
+						QUEUE               = 0x154;
+						// queue
+						//[[[main+6E9900]+350]+90]+154 / [[[main+6E98F8]+350]+90]+154
+						//decimal version:
+						//[[[main+7248128]+848]+144]+340
+						//variable version
+						//[[[main+BASEPOINTER]+PLAYER_1]+QUEUE_STRUCT_TETRIS]+QUEUE
+						
+	}
 	};
 
 	namespace PptContext {
